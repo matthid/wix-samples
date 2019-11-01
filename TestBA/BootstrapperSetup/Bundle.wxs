@@ -2,9 +2,9 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
   <Bundle Name="My Test Application" Version="1.0.0.0" Manufacturer="Bryan" UpgradeCode="C82A383C-751A-43B8-90BF-A250F7BC2863">
     <BootstrapperApplicationRef Id="ManagedBootstrapperApplicationHost">
-      <Payload SourceFile="..\TestBA\BootstrapperCore.config"/>
-      <Payload SourceFile="..\TestBA\bin\Debug\CustomBA.dll"/>
-      <Payload SourceFile="C:\Program Files (x86)\WiX Toolset v3.11\SDK\Microsoft.Deployment.WindowsInstaller.dll"/>
+      <Payload SourceFile="$(var.CustomBA.ProjectDir)\BootstrapperCore.config"/>
+      <Payload SourceFile="$(var.CustomBA.TargetPath)"/>
+      <Payload SourceFile="$(nuget.GetPath(WiX))\tools\Microsoft.Deployment.WindowsInstaller.dll"/>
     </BootstrapperApplicationRef>
 
     <Chain>
