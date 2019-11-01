@@ -3,11 +3,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
 
-[assembly: AssemblyTitle("TestBA")]
+[assembly: AssemblyTitle("CustomBA")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("TestBA")]
+[assembly: AssemblyProduct("CustomBA")]
 [assembly: AssemblyCopyright("Copyright ©  2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,5 +19,5 @@ using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
 
 // Identifies the class that derives from UserExperience and is the UX class that gets
 // instantiated by the interop layer
-[assembly: BootstrapperApplication(typeof(Examples.Bootstrapper.TestBA))]
+[assembly: BootstrapperApplication(typeof(Examples.Bootstrapper.CustomBA))]
 

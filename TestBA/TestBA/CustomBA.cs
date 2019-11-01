@@ -7,7 +7,7 @@ using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
 
 namespace Examples.Bootstrapper
 {
-    public class TestBA : BootstrapperApplication
+    public class CustomBA : BootstrapperApplication
     {
 
         // global dispatcher
@@ -16,7 +16,7 @@ namespace Examples.Bootstrapper
         // entry point for our custom UI
         protected override void Run()
         {
-            this.Engine.Log(LogLevel.Verbose, "Launching custom TestBA UX");
+            this.Engine.Log(LogLevel.Verbose, "Launching CustomBA UX");
             BootstrapperDispatcher = Dispatcher.CurrentDispatcher;
 
             MainViewModel viewModel = new MainViewModel(this);

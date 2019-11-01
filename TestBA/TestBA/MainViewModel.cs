@@ -1,10 +1,7 @@
 ﻿using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
-using GalaSoft.MvvmLight;
-using GalaSoft.MvvmLight.Command;
 
 namespace Examples.Bootstrapper
 {
-
     public class MainViewModel : ViewModelBase
     {
         //constructor
@@ -28,9 +25,10 @@ namespace Examples.Bootstrapper
             set
             {
                 installEnabled = value;
-                RaisePropertyChanged("InstallEnabled");
+                OnPropertyChanged();
             }
         }
+
 
         private bool uninstallEnabled;
         public bool UninstallEnabled
@@ -39,7 +37,7 @@ namespace Examples.Bootstrapper
             set
             {
                 uninstallEnabled = value;
-                RaisePropertyChanged("UninstallEnabled");
+                OnPropertyChanged();
             }
         }
 
@@ -50,7 +48,7 @@ namespace Examples.Bootstrapper
             set
             {
                 isThinking = value;
-                RaisePropertyChanged("IsThinking");
+                OnPropertyChanged();
             }
         }
 
@@ -74,7 +72,7 @@ namespace Examples.Bootstrapper
 
         private void ExitExecute()
         {
-            TestBA.BootstrapperDispatcher.InvokeShutdown();
+            CustomBA.BootstrapperDispatcher.InvokeShutdown();
         }
 
         /// <summary>
