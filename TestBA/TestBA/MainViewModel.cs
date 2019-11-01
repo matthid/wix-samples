@@ -1,19 +1,30 @@
-﻿using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows.Threading;
+using Microsoft.Tools.WindowsInstallerXml.Bootstrapper;
 
 namespace Examples.Bootstrapper
 {
     public class MainViewModel : ViewModelBase
     {
+        public int ExitCode { get; private set; }
+        private Dispatcher _dispatcher;
+        private readonly bool _applyAutomatically;
+
         //constructor
-        public MainViewModel(BootstrapperApplication bootstrapper)
+        public MainViewModel(Dispatcher dispatcher, BootstrapperApplication bootstrapper, bool applyAutomatically)
         {
-            
+            _dispatcher = dispatcher;
+            _applyAutomatically = applyAutomatically;
             this.IsThinking = false;
 
             this.Bootstrapper = bootstrapper;
-            this.Bootstrapper.ApplyComplete += this.OnApplyComplete;
-            this.Bootstrapper.DetectPackageComplete += this.OnDetectPackageComplete;
-            this.Bootstrapper.PlanComplete += this.OnPlanComplete;
+            this.Bootstrapper.ApplyComplete += this.OnApplyCompleteUiUpdate;
+            this.Bootstrapper.DetectPackageComplete += this.OnDetectPackageCompleteUiUpdate;
+            this.Bootstrapper.PlanComplete += this.OnPlanCompleteUiUpdate;
         }
 
         #region Properties
@@ -58,29 +69,91 @@ namespace Examples.Bootstrapper
 
         #region Methods
 
-        private void InstallExecute()
+        internal void DetectExecute()
         {
-            IsThinking = true;
-            Bootstrapper.Engine.Plan(LaunchAction.Install);
+            this.IsThinking = true;
+            Bootstrapper.Engine.Detect();
         }
 
-        private void UninstallExecute()
+        private void PlanExecute(LaunchAction action)
         {
             IsThinking = true;
-            Bootstrapper.Engine.Plan(LaunchAction.Uninstall);
+            Bootstrapper.Engine.Plan(action);
         }
 
-        private void ExitExecute()
+        private void ApplyExecute()
         {
-            CustomBA.BootstrapperDispatcher.InvokeShutdown();
+            IsThinking = true;
+            Bootstrapper.Engine.Apply(IntPtr.Zero);
+        }
+
+        internal Task<IEnumerable<DetectPackageCompleteEventArgs>> DetectAsync()
+        {
+            var packages = new List<DetectPackageCompleteEventArgs>();
+            var detectCompleted = new TaskCompletionSource<IEnumerable<DetectPackageCompleteEventArgs>>();
+            var packCount = Bootstrapper.Engine.PackageCount;
+
+            void EventHandler(object sender, DetectPackageCompleteEventArgs e)
+            {
+                packages.Add(e);
+                if (packages.Count >= packCount)
+                {
+                    this.Bootstrapper.DetectPackageComplete -= EventHandler;
+                    detectCompleted.SetResult(packages);
+                }
+            }
+
+            this.Bootstrapper.DetectPackageComplete += EventHandler;
+            DetectExecute();
+
+            return detectCompleted.Task;
+        }
+
+        internal Task<PlanCompleteEventArgs> PlanAsync(LaunchAction action)
+        {
+            var planCompleted = new TaskCompletionSource<PlanCompleteEventArgs>();
+
+            void EventHandler(object sender, PlanCompleteEventArgs e)
+            {
+                this.Bootstrapper.PlanComplete -= EventHandler;
+                planCompleted.SetResult(e);
+            }
+
+            this.Bootstrapper.PlanComplete += EventHandler;
+            PlanExecute(action);
+
+            return planCompleted.Task;
+        }
+
+        internal Task<ApplyCompleteEventArgs> ApplyAsync()
+        {
+            var applyCompleted = new TaskCompletionSource<ApplyCompleteEventArgs>();
+
+            void EventHandler(object sender, ApplyCompleteEventArgs e)
+            {
+                this.Bootstrapper.ApplyComplete -= EventHandler;
+                applyCompleted.SetResult(e);
+            }
+
+            this.Bootstrapper.ApplyComplete += EventHandler;
+            ApplyExecute();
+
+            return applyCompleted.Task;
+        }
+
+
+        internal void ExitExecute()
+        {
+            _dispatcher.InvokeShutdown();
         }
 
         /// <summary>
         /// Method that gets invoked when the Bootstrapper ApplyComplete event is fired.
         /// This is called after a bundle installation has completed. Make sure we updated the view.
         /// </summary>
-        private void OnApplyComplete(object sender, ApplyCompleteEventArgs e)
+        private void OnApplyCompleteUiUpdate(object sender, ApplyCompleteEventArgs e)
         {
+            ExitCode = e.Status;
             IsThinking = false;
             InstallEnabled = false;
             UninstallEnabled = false;
@@ -92,16 +165,16 @@ namespace Examples.Bootstrapper
         /// specified in one of the package elements (msipackage, exepackage, msppackage,
         /// msupackage) in the WiX bundle.
         /// </summary>
-        private void OnDetectPackageComplete(object sender, DetectPackageCompleteEventArgs e)
+        private void OnDetectPackageCompleteUiUpdate(object sender, DetectPackageCompleteEventArgs e)
         {
-            if (e.PackageId == "DummyInstallationPackageId")
-            {
+            //if (e.PackageId == "DummyInstallationPackageId")
+            //{
                 if (e.State == PackageState.Absent)
                     InstallEnabled = true;
 
                 else if (e.State == PackageState.Present)
                     UninstallEnabled = true;
-            }
+            //}
         }
 
         /// <summary>
@@ -109,10 +182,20 @@ namespace Examples.Bootstrapper
         /// If the planning was successful, it instructs the Bootstrapper Engine to 
         /// install the packages.
         /// </summary>
-        private void OnPlanComplete(object sender, PlanCompleteEventArgs e)
+        private void OnPlanCompleteUiUpdate(object sender, PlanCompleteEventArgs e)
         {
             if (e.Status >= 0)
-                Bootstrapper.Engine.Apply(System.IntPtr.Zero);
+            {
+                if (_applyAutomatically)
+                {
+                    ApplyExecute();
+                }
+            }
+            else
+            {
+                IsThinking = false;
+                ExitCode = e.Status;
+            }
         }
 
         #endregion //Methods
@@ -125,7 +208,7 @@ namespace Examples.Bootstrapper
             get
             {
                 if (installCommand == null)
-                    installCommand = new RelayCommand(() => InstallExecute(), () => InstallEnabled == true);
+                    installCommand = new RelayCommand(() => PlanExecute(LaunchAction.Install), () => InstallEnabled == true);
 
                 return installCommand;
             }
@@ -137,13 +220,14 @@ namespace Examples.Bootstrapper
             get
             {
                 if (uninstallCommand == null)
-                    uninstallCommand = new RelayCommand(() => UninstallExecute(), () => UninstallEnabled == true);
+                    uninstallCommand = new RelayCommand(() => PlanExecute(LaunchAction.Uninstall), () => UninstallEnabled == true);
 
                 return uninstallCommand;
             }
         }
 
         private RelayCommand exitCommand;
+
         public RelayCommand ExitCommand
         {
             get
@@ -156,5 +240,11 @@ namespace Examples.Bootstrapper
         }
         
         #endregion //RelayCommands
+
+        public void SetError(Exception exception)
+        {
+            Bootstrapper.Engine.Log(LogLevel.Error, exception.ToString());
+            ExitCode = -1;
+        }
     }
 }
