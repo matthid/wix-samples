@@ -4,7 +4,7 @@
     <BootstrapperApplicationRef Id="ManagedBootstrapperApplicationHost">
       <Payload SourceFile="$(var.CustomBA.ProjectDir)\BootstrapperCore.config"/>
       <Payload SourceFile="$(var.CustomBA.TargetPath)"/>
-      <Payload SourceFile="$(nuget.GetPath(WiX))\tools\Microsoft.Deployment.WindowsInstaller.dll"/>
+      <Payload SourceFile="$(nuget.GetPath(WiX))\tools\sdk\Microsoft.Deployment.WindowsInstaller.dll"/>
     </BootstrapperApplicationRef>
 
     <Chain>
